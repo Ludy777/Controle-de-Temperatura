@@ -1,101 +1,97 @@
 #include "TemperatureSensor.h"
+#include "esp_rom_sys.h" // Para esp_rom_delay_us()
 
-TemperatureSensor::TemperatureSensor(gpio_num_t pin) : _pin(pin) {}
+static const char *TAG = "TemperatureSensor";
 
-bool TemperatureSensor::init() {
-    gpio_set_direction(_pin, GPIO_MODE_INPUT_OUTPUT_OD);
-    gpio_set_pull_mode(_pin, GPIO_PULLUP_ONLY);
-    return true;
+// ---- Configuração do pino ----
+TemperatureSensor::TemperatureSensor(gpio_num_t dataPin) {
+    pin = dataPin;
+    lastTemperature = 25.0; // valor inicial
 }
 
-void TemperatureSensor::setPinInput() {
-    gpio_set_direction(_pin, GPIO_MODE_INPUT);
+void TemperatureSensor::begin() {
+    gpio_set_direction(pin, GPIO_MODE_INPUT_OUTPUT_OD);
+    gpio_set_pull_mode(pin, GPIO_PULLUP_ONLY);
+    ESP_LOGI(TAG, "Sensor DS18B20 inicializado no pino %d", pin);
 }
 
-void TemperatureSensor::setPinOutput() {
-    gpio_set_direction(_pin, GPIO_MODE_OUTPUT_OD);
-}
-
-bool TemperatureSensor::resetPulse() {
-    setPinOutput();
-    gpio_set_level(_pin, 0);
+// ---- Funções auxiliares do protocolo OneWire ----
+static void onewire_reset(gpio_num_t pin) {
+    gpio_set_level(pin, 0);
+    gpio_set_direction(pin, GPIO_MODE_OUTPUT);
     esp_rom_delay_us(480);
-    setPinInput();
-    esp_rom_delay_us(70);
-
-    int presence = gpio_get_level(_pin);
-    esp_rom_delay_us(410);
-
-    return (presence == 0); // 0 = DS18B20 presente
+    gpio_set_direction(pin, GPIO_MODE_INPUT);
+    esp_rom_delay_us(480);
 }
 
-void TemperatureSensor::writeBit(int bit) {
-    setPinOutput();
-    gpio_set_level(_pin, 0);
+static void onewire_write_bit(gpio_num_t pin, int bit) {
+    gpio_set_direction(pin, GPIO_MODE_OUTPUT);
+    gpio_set_level(pin, 0);
     if (bit) {
-        esp_rom_delay_us(6);
-        setPinInput();
-        esp_rom_delay_us(64);
-    } else {
-        esp_rom_delay_us(60);
-        setPinInput();
         esp_rom_delay_us(10);
+        gpio_set_level(pin, 1);
+        esp_rom_delay_us(55);
+    } else {
+        esp_rom_delay_us(65);
+        gpio_set_level(pin, 1);
+        esp_rom_delay_us(5);
     }
 }
 
-int TemperatureSensor::readBit() {
+static int onewire_read_bit(gpio_num_t pin) {
     int bit;
-    setPinOutput();
-    gpio_set_level(_pin, 0);
-    esp_rom_delay_us(6);
-    setPinInput();
-    esp_rom_delay_us(9);
-    bit = gpio_get_level(_pin);
-    esp_rom_delay_us(55);
+    gpio_set_direction(pin, GPIO_MODE_OUTPUT);
+    gpio_set_level(pin, 0);
+    esp_rom_delay_us(3);
+    gpio_set_direction(pin, GPIO_MODE_INPUT);
+    esp_rom_delay_us(10);
+    bit = gpio_get_level(pin);
+    esp_rom_delay_us(53);
     return bit;
 }
 
-void TemperatureSensor::writeByte(uint8_t data) {
+static void onewire_write_byte(gpio_num_t pin, uint8_t byte) {
     for (int i = 0; i < 8; i++) {
-        writeBit(data & 0x01);
-        data >>= 1;
+        onewire_write_bit(pin, byte & 0x01);
+        byte >>= 1;
     }
 }
 
-uint8_t TemperatureSensor::readByte() {
+static uint8_t onewire_read_byte(gpio_num_t pin) {
     uint8_t value = 0;
     for (int i = 0; i < 8; i++) {
-        value >>= 1;
-        if (readBit())
-            value |= 0x80;
+        int bit = onewire_read_bit(pin);
+        value |= (bit << i);
     }
     return value;
 }
 
-float TemperatureSensor::readTemperature() {
-    if (!resetPulse()) {
-        ESP_LOGE(TAG, "Sensor não detectado!");
-        return -127.0f;
-    }
+// ---- Leitura DS18B20 ----
+float TemperatureSensor::readRawTemperature() {
+    onewire_reset(pin);
+    onewire_write_byte(pin, 0xCC); // Skip ROM
+    onewire_write_byte(pin, 0x44); // Start temperature conversion
 
-    writeByte(0xCC); // SKIP ROM
-    writeByte(0x44); // CONVERT T
+    vTaskDelay(pdMS_TO_TICKS(750)); // tempo de conversão do DS18B20
 
-    vTaskDelay(pdMS_TO_TICKS(750)); // aguarda conversão (máx 12 bits)
+    onewire_reset(pin);
+    onewire_write_byte(pin, 0xCC); // Skip ROM
+    onewire_write_byte(pin, 0xBE); // Read Scratchpad
 
-    if (!resetPulse()) {
-        ESP_LOGE(TAG, "Erro ao reiniciar após conversão!");
-        return -127.0f;
-    }
+    uint8_t tempLSB = onewire_read_byte(pin);
+    uint8_t tempMSB = onewire_read_byte(pin);
 
-    writeByte(0xCC); // SKIP ROM
-    writeByte(0xBE); // READ SCRATCHPAD
+    int16_t raw = (tempMSB << 8) | tempLSB;
+    return raw / 16.0f;
+}
 
-    uint8_t temp_lsb = readByte();
-    uint8_t temp_msb = readByte();
+// ---- Filtro simples para estabilidade ----
+float TemperatureSensor::readCelsius() {
+    float newTemp = readRawTemperature();
 
-    int16_t temp_read = (temp_msb << 8) | temp_lsb;
-    float temp_celsius = temp_read / 16.0f;
+    // filtro de suavização exponencial (média móvel leve)
+    lastTemperature = (0.8f * lastTemperature) + (0.2f * newTemp);
 
-    return temp_celsius;
+    ESP_LOGI("","Temp lida: %.2f °C", lastTemperature);
+    return lastTemperature;
 }
