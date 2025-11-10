@@ -10,8 +10,8 @@ private:
 
 public:
     explicit Dimmer(gpio_num_t pin);
-    void begin();
-    void setPower(int percent);
+    void inicio();
+    void setPwm(int percent);
     void onZeroCross();
     int getPower() const { return powerLevel; }
 };

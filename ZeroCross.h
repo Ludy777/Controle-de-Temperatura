@@ -5,7 +5,7 @@
 class ZeroCross {
 public:
     explicit ZeroCross(gpio_num_t pin);
-    void begin(void (*callback)());
+    void inicio(void (*callback)());
     static void IRAM_ATTR isrHandler(void *arg);  // posição correta
 private:
     gpio_num_t zcPin;

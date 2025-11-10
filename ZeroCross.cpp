@@ -5,7 +5,7 @@ void (*ZeroCross::zcCallback)() = nullptr;
 
 ZeroCross::ZeroCross(gpio_num_t pin) : zcPin(pin) {}
 
-void ZeroCross::begin(void (*callback)()) {
+void ZeroCross::inicio(void (*callback)()) {
     zcCallback = callback;
 
     gpio_config_t io_conf = {};
