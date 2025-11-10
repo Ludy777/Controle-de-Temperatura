@@ -21,6 +21,8 @@ void Dimmer::setPower(int percent) {
     if (percent > 100) percent = 100;
     powerLevel = percent;
     delayMicroseconds = 8000 - (percent * 80);
+
+    ESP_LOGI("","PWM lampada: %d", percent);
 }
 
 void Dimmer::onZeroCross() {

@@ -1,8 +1,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-#include "FanController.h"
-#include "TemperatureSensor.h"
+#include "Ventoinha.h"
+#include "Sensor.h"
 #include "Dimmer.h"
 #include "ZeroCross.h"
 
@@ -23,12 +23,12 @@ void onZeroCrossISR();
 
 extern "C" void app_main(void) {
     
-    TemperatureSensor sensor(TEMP_PIN);
-    FanController fan(FAN_PIN);
+    Sensor sensor(TEMP_PIN);
+    Ventoinha fan(FAN_PIN);
     ZeroCross zc(ZC_PIN);
 
-    sensor.begin();
-    fan.begin();
+    sensor.inicio();
+    fan.inicio();
     dimmer.begin();
     zc.begin(onZeroCrossISR);
 
@@ -37,15 +37,7 @@ extern "C" void app_main(void) {
     ESP_LOGI("", "Controle de temperatura iniciado.");
 
     while (true) {
-        float temp = sensor.readCelsius();
-
-        if (temp > TEMP_ON && !fan.isOn()) {
-            fan.turnOn();
-        } else if (temp < TEMP_OFF && fan.isOn()) {
-            fan.turnOff();
-        }
-
-        
+        float temp = sensor.lerCelsius();        
 
         if (temp > setpoint + 1.0f){
             power = 5;
@@ -64,9 +56,12 @@ extern "C" void app_main(void) {
             lastPower = power;
             dimmer.setPower(power);
         }
-        
 
-        ESP_LOGI("","PWM lampada: %d", power);
+        if (temp > TEMP_ON && !fan.estaLigado()) {
+            fan.liga();
+        } else if (temp < TEMP_OFF && fan.estaLigado()) {
+            fan.desliga();
+        }        
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
