@@ -15,9 +15,7 @@ const gpio_num_t TRIAC_PIN = GPIO_NUM_26;
 const gpio_num_t ZC_PIN = GPIO_NUM_27;
 
 //Definições das temperatura de comparação
-const float TEMP_ON  = 26.0f;
-const float TEMP_OFF = 25.0f;
-float tempAlvo = 26.0f;
+float tempAlvo = 26.0;
 
 //Precisa ser criado fora da main por causa da interrupção
 static Dimmer dimmer(TRIAC_PIN);
@@ -50,13 +48,13 @@ extern "C" void app_main(void) {
         float temperatura = sensor.lerCelsius();        
 
         //Comparações para saber a potência do pwm
-        if (temperatura > tempAlvo + 1.0f){
+        if (temperatura > tempAlvo + 1.0){
             pwm = 5;
         }
         else if (temperatura > tempAlvo){
             pwm = 10;
         }
-        else if (temperatura > tempAlvo - 1.0f){
+        else if (temperatura > tempAlvo - 1.0){
             pwm = 15;
         }
         else{
@@ -71,9 +69,9 @@ extern "C" void app_main(void) {
         }
 
         //Liga ou desliga a ventoinha com base na temperatura do sensor lida
-        if (temperatura > TEMP_ON && !ventoinha.estaLigado()) {
+        if (temperatura > tempAlvo && !ventoinha.estaLigado()) {
             ventoinha.liga();
-        } else if (temperatura < TEMP_OFF && ventoinha.estaLigado()) {
+        } else if (temperatura < (tempAlvo-1.0) && ventoinha.estaLigado()) {
             ventoinha.desliga();
         }        
 
@@ -82,6 +80,7 @@ extern "C" void app_main(void) {
     }
 }
 
+//Interrupção do zero cross
 void onZeroCrossISR() {
     dimmer.onZeroCross();
 }
