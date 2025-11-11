@@ -7,6 +7,11 @@ Ventoinha::Ventoinha(gpio_num_t pino) {
     ventLigado = false;
 }
 
+Ventoinha::~Ventoinha(){
+    ventLigado = false;
+    gpio_set_level(ventPino, 0);
+}
+
 void Ventoinha::inicio() {
     gpio_set_direction(ventPino, GPIO_MODE_OUTPUT);
     gpio_set_level(ventPino, 0);

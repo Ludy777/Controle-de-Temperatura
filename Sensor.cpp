@@ -95,3 +95,7 @@ float Sensor::lerCelsius() {
     ESP_LOGI("","Temp lida: %.2f °C", ultimaTemp);
     return ultimaTemp;
 }
+
+Sensor::~Sensor(){
+    ultimaTemp = 0;
+}

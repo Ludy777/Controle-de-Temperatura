@@ -32,3 +32,7 @@ void Dimmer::onZeroCross() {
     esp_rom_delay_us(100);
     gpio_set_level(triacPin, 0);
 }
+
+Dimmer::~Dimmer(){
+    gpio_set_level(triacPin, 0);
+}

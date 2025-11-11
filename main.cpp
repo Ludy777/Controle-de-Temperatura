@@ -15,7 +15,7 @@ const gpio_num_t ZC_PIN = GPIO_NUM_27;
 
 const float TEMP_ON  = 26.0f;
 const float TEMP_OFF = 25.0f;
-float tempAlvo = 27.0f;
+float tempAlvo = 26.0f;
 
 //Precisa ser criado fora da main por causa da interrupção
 static Dimmer dimmer(TRIAC_PIN);

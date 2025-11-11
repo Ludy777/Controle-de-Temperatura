@@ -8,6 +8,7 @@ private:
     bool ventLigado;
 public:
     Ventoinha(gpio_num_t pino);
+    ~Ventoinha();
     void inicio();
     void liga();
     void desliga();

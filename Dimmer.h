@@ -10,6 +10,7 @@ private:
 
 public:
     explicit Dimmer(gpio_num_t pin);
+    ~Dimmer();
     void inicio();
     void setPwm(int percent);
     void onZeroCross();

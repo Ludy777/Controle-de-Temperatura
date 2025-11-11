@@ -25,3 +25,7 @@ void ZeroCross::inicio(void (*callback)()) {
 void IRAM_ATTR ZeroCross::isrHandler(void *arg) {
     if (zcCallback) zcCallback();
 }
+
+ZeroCross::~ZeroCross() {
+    gpio_isr_handler_remove(zcPin);
+}

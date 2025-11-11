@@ -12,6 +12,7 @@ private:
 
 public:
     Sensor(gpio_num_t dataPin);
+    ~Sensor();
     void inicio();
     float lerCelsius();
 };
