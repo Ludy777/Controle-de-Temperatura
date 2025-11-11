@@ -8,11 +8,13 @@
 #include "Dimmer.h"
 #include "ZeroCross.h"
 
+//Definição dos pinos que serão utilizados
 const gpio_num_t TEMP_PIN = GPIO_NUM_4;
 const gpio_num_t VENT_PIN  = GPIO_NUM_23;
 const gpio_num_t TRIAC_PIN = GPIO_NUM_26;
 const gpio_num_t ZC_PIN = GPIO_NUM_27;
 
+//Definições das temperatura de comparação
 const float TEMP_ON  = 26.0f;
 const float TEMP_OFF = 25.0f;
 float tempAlvo = 26.0f;
@@ -23,24 +25,31 @@ static Dimmer dimmer(TRIAC_PIN);
 // ISR de zero-cross chama o dimmer
 void onZeroCrossISR();
 
+//Precisa de extern C, porque o esp32 só trabalha com C puro e assim não dá problema
 extern "C" void app_main(void) {
     
+    //Criação das classes
     Sensor sensor(TEMP_PIN);
     Ventoinha ventoinha(VENT_PIN);
     ZeroCross zc(ZC_PIN);
 
+    //Inicia as classes corretamente
     sensor.inicio();
     ventoinha.inicio();
     dimmer.inicio();
     zc.inicio(onZeroCrossISR);
 
+    //Variáveis para controle do pwm
     int ultimoPwm = 0, pwm = 0;
 
+    //Mesma coisa que cout, só que para o esp32
     ESP_LOGI("", "Controle de temperatura iniciado.");
 
     while (true) {
+        //Leitura da temperatura do sensor
         float temperatura = sensor.lerCelsius();        
 
+        //Comparações para saber a potência do pwm
         if (temperatura > tempAlvo + 1.0f){
             pwm = 5;
         }
@@ -54,11 +63,14 @@ extern "C" void app_main(void) {
             pwm = 100;
         }
 
+        //Só muda o pwm se for diferente do que já está ativo
+        //para não forçar 
         if(pwm != ultimoPwm){
             ultimoPwm = pwm;
             dimmer.setPwm(pwm);
         }
 
+        //Liga ou desliga a ventoinha com base na temperatura do sensor lida
         if (temperatura > TEMP_ON && !ventoinha.estaLigado()) {
             ventoinha.liga();
         } else if (temperatura < TEMP_OFF && ventoinha.estaLigado()) {
