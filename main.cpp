@@ -18,15 +18,17 @@ const gpio_num_t ZC_PIN = GPIO_NUM_27;
 float tempAlvo = 26.0;
 
 //Precisa ser criado fora da main por causa da interrupção
-static Dimmer dimmer(TRIAC_PIN);
+Dimmer dimmer(TRIAC_PIN);
 
-// ISR de zero-cross chama o dimmer
-void onZeroCrossISR();
+// Interrupção de zero-cross chama o dimmer
+void onZeroCrossISR() {
+    dimmer.onZeroCross();
+}
 
-//Precisa de extern C, porque o esp32 só trabalha com C puro e assim não dá problema
+//Precisa de extern C porque o esp32 só trabalha com C puro e assim não dá problema
 extern "C" void app_main(void) {
     
-    //Criação das classes
+    //Criação de objeto das classes
     Sensor sensor(TEMP_PIN);
     Ventoinha ventoinha(VENT_PIN);
     ZeroCross zc(ZC_PIN);
@@ -78,9 +80,4 @@ extern "C" void app_main(void) {
         //Delay do freeRtos
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
-}
-
-//Interrupção do zero cross
-void onZeroCrossISR() {
-    dimmer.onZeroCross();
 }

@@ -2,7 +2,7 @@
 #include "esp_rom_sys.h"
 #include "esp_log.h"
 
-//Cria a classe dimmer
+//Construtor da classe dimmer
 Dimmer::Dimmer(gpio_num_t pin) {
     triacPin = pin;
     potPwm = 0;

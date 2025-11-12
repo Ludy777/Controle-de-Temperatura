@@ -1,14 +1,15 @@
 #pragma once
 #include "driver/gpio.h"
-#include "esp_attr.h"  // <-- importante: define IRAM_ATTR
+#include "esp_attr.h"
 
 class ZeroCross {
 public:
-    explicit ZeroCross(gpio_num_t pin);
-    ~ZeroCross();
-    void inicio(void (*callback)());
-    static void IRAM_ATTR isrHandler(void *arg);  // posição correta
+    ZeroCross(gpio_num_t pin); //Construtor da classe
+    ~ZeroCross(); //Destrutor da classe
+    void inicio(void (*callback)()); //Configuração do pino e interrupção nele
+    static void IRAM_ATTR isrHandler(void *arg);  //Interrupção do ZeroCross
+
 private:
-    gpio_num_t zcPin;
-    static void (*zcCallback)();
+    gpio_num_t zcPino; //Pino a ser configurado
+    static void (*chamada)();//Variavel estatica para a função interrupção
 };

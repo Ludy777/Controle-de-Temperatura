@@ -5,6 +5,12 @@
 #include "freertos/task.h"
 
 class Sensor {
+public:
+    Sensor(gpio_num_t dataPin); //Construtor
+    ~Sensor(); //Destrutor
+    void inicio(); //Configuração inicial
+    float lerCelsius(); //Retorna a temperatura lida para quem chamou
+
 private:
     gpio_num_t pino; //Variavel indicando o pino que vai ser usado
     float ultimaTemp; //Ultima media válida de temperatura
@@ -16,10 +22,4 @@ private:
     static int sensorTemp_read_bit(gpio_num_t pin);
     static void sensorTemp_write_byte(gpio_num_t pin, uint8_t byte);
     static uint8_t sensorTemp_read_byte(gpio_num_t pin) ;
-
-public:
-    Sensor(gpio_num_t dataPin); //Construtor
-    ~Sensor(); //Destrutor
-    void inicio(); //Configuração inicial
-    float lerCelsius(); //Retorna a temperatura lida para quem chamou
 };

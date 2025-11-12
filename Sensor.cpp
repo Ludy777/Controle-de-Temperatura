@@ -1,7 +1,7 @@
 #include "Sensor.h"
 #include "esp_rom_sys.h" // Para esp_rom_delay_us()
 
-//Cria a classe dimmer
+//Construtor da classe sensor
 Sensor::Sensor(gpio_num_t dataPin) {
     pino = dataPin;
     ultimaTemp = 25.0; // valor inicial
