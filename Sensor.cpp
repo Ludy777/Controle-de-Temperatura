@@ -1,22 +1,59 @@
 #include "Sensor.h"
 #include "esp_rom_sys.h" // Para esp_rom_delay_us()
 
-static const char *TAG = "Sensor";
-
-// ---- Configuração do pino ----
+//Cria a classe dimmer
 Sensor::Sensor(gpio_num_t dataPin) {
     pino = dataPin;
     ultimaTemp = 25.0; // valor inicial
 }
 
+//Inicia a classe
 void Sensor::inicio() {
     gpio_set_direction(pino, GPIO_MODE_INPUT_OUTPUT_OD);
     gpio_set_pull_mode(pino, GPIO_PULLUP_ONLY);
-    ESP_LOGI(TAG, "Sensor DS18B20 inicializado no pino %d", pino);
+    ESP_LOGI("", "Sensor DS18B20 inicializado no pino %d", pino);
 }
 
-// ---- Funções auxiliares do protocolo OneWire ----
-static void onewire_reset(gpio_num_t pin) {
+// Faz a laitura do sensor
+float Sensor::leituraTemp() {
+    sensorTemp_reset(pino); //Sincroniza o sinal para iniciar a comunicação
+    sensorTemp_write_byte(pino, 0xCC); // Indica que vai conversar com o sensor
+    sensorTemp_write_byte(pino, 0x44); // Inicia a leitura da temperatura
+
+    vTaskDelay(pdMS_TO_TICKS(750)); // tempo de conversão do DS18B20
+
+    sensorTemp_reset(pino);
+    sensorTemp_write_byte(pino, 0xCC); // Indica que vai conversar com o sensor
+    sensorTemp_write_byte(pino, 0xBE); // Indica que vai ler a temperatura
+
+    uint8_t tempLSB = sensorTemp_read_byte(pino); // Parte menos significativa da leitura
+    uint8_t tempMSB = sensorTemp_read_byte(pino); // Parte mais significativa da leitura
+
+    int16_t tempBruta = (tempMSB << 8) | tempLSB; // Monta a temperatura
+    return tempBruta / 16.0f; // Converte o dado de temperatura para ºC
+}
+
+// Pega a temperatura lida e faz uma média para ajudar no tratamento posterior
+float Sensor::lerCelsius() {
+    float newTemp = leituraTemp();
+
+    // filtro de suavização exponencial (média móvel leve)
+    ultimaTemp = (0.8f * ultimaTemp) + (0.2f * newTemp);
+
+    ESP_LOGI("","Temp lida: %.2f °C", ultimaTemp);
+    return ultimaTemp;
+}
+
+// Destrutor da classe
+Sensor::~Sensor(){
+    ultimaTemp = 0;
+}
+
+/*
+    Funções necessárias para funcionamento do sensor DS18B20
+    O sensor só faz a leitura e envia para o controlador quando é pedido
+*/
+void Sensor::sensorTemp_reset(gpio_num_t pin) {
     gpio_set_level(pin, 0);
     gpio_set_direction(pin, GPIO_MODE_OUTPUT);
     esp_rom_delay_us(480);
@@ -24,7 +61,7 @@ static void onewire_reset(gpio_num_t pin) {
     esp_rom_delay_us(480);
 }
 
-static void onewire_write_bit(gpio_num_t pin, int bit) {
+void Sensor::sensorTemp_write_bit(gpio_num_t pin, int bit) {
     gpio_set_direction(pin, GPIO_MODE_OUTPUT);
     gpio_set_level(pin, 0);
     if (bit) {
@@ -38,7 +75,7 @@ static void onewire_write_bit(gpio_num_t pin, int bit) {
     }
 }
 
-static int onewire_read_bit(gpio_num_t pin) {
+int Sensor::sensorTemp_read_bit(gpio_num_t pin) {
     int bit;
     gpio_set_direction(pin, GPIO_MODE_OUTPUT);
     gpio_set_level(pin, 0);
@@ -50,52 +87,18 @@ static int onewire_read_bit(gpio_num_t pin) {
     return bit;
 }
 
-static void onewire_write_byte(gpio_num_t pin, uint8_t byte) {
+void Sensor::sensorTemp_write_byte(gpio_num_t pin, uint8_t byte) {
     for (int i = 0; i < 8; i++) {
-        onewire_write_bit(pin, byte & 0x01);
+        sensorTemp_write_bit(pin, byte & 0x01);
         byte >>= 1;
     }
 }
 
-static uint8_t onewire_read_byte(gpio_num_t pin) {
+uint8_t Sensor::sensorTemp_read_byte(gpio_num_t pin) {
     uint8_t value = 0;
     for (int i = 0; i < 8; i++) {
-        int bit = onewire_read_bit(pin);
+        int bit = sensorTemp_read_bit(pin);
         value |= (bit << i);
     }
     return value;
-}
-
-// ---- Leitura DS18B20 ----
-float Sensor::leituraTemp() {
-    onewire_reset(pino);
-    onewire_write_byte(pino, 0xCC); // Skip ROM
-    onewire_write_byte(pino, 0x44); // Start temperature conversion
-
-    vTaskDelay(pdMS_TO_TICKS(750)); // tempo de conversão do DS18B20
-
-    onewire_reset(pino);
-    onewire_write_byte(pino, 0xCC); // Skip ROM
-    onewire_write_byte(pino, 0xBE); // Read Scratchpad
-
-    uint8_t tempLSB = onewire_read_byte(pino);
-    uint8_t tempMSB = onewire_read_byte(pino);
-
-    int16_t raw = (tempMSB << 8) | tempLSB;
-    return raw / 16.0f;
-}
-
-// ---- Filtro simples para estabilidade ----
-float Sensor::lerCelsius() {
-    float newTemp = leituraTemp();
-
-    // filtro de suavização exponencial (média móvel leve)
-    ultimaTemp = (0.8f * ultimaTemp) + (0.2f * newTemp);
-
-    ESP_LOGI("","Temp lida: %.2f °C", ultimaTemp);
-    return ultimaTemp;
-}
-
-Sensor::~Sensor(){
-    ultimaTemp = 0;
 }

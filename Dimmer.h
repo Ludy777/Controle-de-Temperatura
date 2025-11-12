@@ -4,15 +4,14 @@
 
 class Dimmer {
 private:
-    gpio_num_t triacPin;
-    int powerLevel;
-    int delayMicroseconds;
+    gpio_num_t triacPin; //Variavel indicando o pino que vai ser usado
+    int potPwm; //Potência do pwm
+    int delayMicrosegundos; //Segundos de delay que vai
 
 public:
-    explicit Dimmer(gpio_num_t pin);
-    ~Dimmer();
-    void inicio();
-    void setPwm(int percent);
-    void onZeroCross();
-    int getPower() const { return powerLevel; }
+    Dimmer(gpio_num_t pin); //Construtor
+    ~Dimmer(); //Destrutor
+    void inicio(); //Configuração inicial
+    void setPwm(int pwm); //Ajusta o delay do pwm
+    void onZeroCross(); //Aplica o delay do pwm no pino
 };
