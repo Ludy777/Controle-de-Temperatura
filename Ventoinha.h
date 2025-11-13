@@ -3,6 +3,12 @@
 #include "esp_log.h"
 
 class Ventoinha {
+
+private:
+    gpio_num_t ventPino; //Pino em que está a ventoinha
+    bool ventLigado; //Salva o ultimo estado configurado da ventoinha
+
+
 public:
     //Construtor da classe ventoinha
     Ventoinha(gpio_num_t pino){
@@ -45,8 +51,4 @@ public:
     bool estaLigado(){
         return ventLigado;
     }
-
-private:
-    gpio_num_t ventPino; //Pino em que está a ventoinha
-    bool ventLigado; //Salva o ultimo estado configurado da ventoinha
 };

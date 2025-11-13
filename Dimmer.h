@@ -15,3 +15,6 @@ private:
     int potPwm; //Potência do pwm
     int delayMicrosegundos; //Segundos de delay que vai
 };
+
+
+
